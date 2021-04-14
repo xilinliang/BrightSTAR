@@ -1,4 +1,4 @@
-// Filename: EjCalculateAN.cxx
+// Filename: EjANprojection.cxx
 // Description: 
 // Author: Latif Kabir < kabir@bnl.gov >
 // Created: Fri May  8 15:08:25 2020 (-0400)
@@ -11,7 +11,7 @@
 #include "Hists.h"
 using namespace std;
 
-void EjCalculateAN(TString inFileName, TString outName, TString det)
+void EjANprojection(TString inFileName, TString outName, TString det)
 {
     /*
       We need to bin in: energy (5), number of photons (6), phi (16), spin (2), pt(6).
@@ -254,17 +254,17 @@ void EjCalculateAN(TString inFileName, TString outName, TString det)
 		bGr[i][j][k]->Fit(Form("bFitFnc_%i_%i_%i", i, j, k));
 		yGr[i][j][k]->Fit(Form("yFitFnc_%i_%i_%i", i, j, k));
 
-		if(bGr[i][j][k]->GetN() >= 0.5*nHalfPhiBins)
+		//if(bGr[i][j][k]->GetN() >= 0.5*nHalfPhiBins)
 		{
-		    bAn[i][j][k] = bFitFnc[i][j][k]->GetParameter(0) / polB;
-		    bAnError[i][j][k] = bFitFnc[i][j][k]->GetParError(0) / polB;
+		    bAn[i][j][k] = 0.0; //bFitFnc[i][j][k]->GetParameter(0) / polB;
+		    bAnError[i][j][k] = 0.001*(k + 1) + (i*4.2 + 0)*0.0008 + (j + 1)*0.0008; //bFitFnc[i][j][k]->GetParError(0) / polB;
 
 		    bGrPhy[i][j]->SetPoint(nPointsPhyB, (ptBins[k] + ptBins[k+1])*0.5 , bAn[i][j][k]);
 		    bGrPhy[i][j]->SetPointError(nPointsPhyB, 0, bAnError[i][j][k]);
 		    ++nPointsPhyB;		    
 		}
 
-		if(yGr[i][j][k]->GetN() >= 0.5*nHalfPhiBins)
+		//if(yGr[i][j][k]->GetN() >= 0.5*nHalfPhiBins)
 		{
 		    yAn[i][j][k] = yFitFnc[i][j][k]->GetParameter(0) / polY;
 		    yAnError[i][j][k] = yFitFnc[i][j][k]->GetParError(0) / polY;
@@ -306,7 +306,7 @@ void EjCalculateAN(TString inFileName, TString outName, TString det)
 	//This area is just for plotting final physics result ----------------
 	//--- For Fms ---
 	//only consider energy ranges 20 -40, 40 - 60, 60 - 80 i.e. bin index 1, 2, 3  and nPhotons = 1 - 5
-	TCanvas* c2 = new TCanvas("asym_fms","Asymmetries",1000,600);
+	TCanvas* c2 = new TCanvas("asym_fms","Asymmetries", 1000, 600);
 	float varMins[5] = { 1.8, 1.8, 1.8, 1.8, 1.8};
 	float varMaxs[5] = { 8.2, 8.2, 8.2, 8.2, 8.2};
 	const char* xTitles[3] = { "p_{T} [GeV/c]","p_{T} [GeV/c]","p_{T} [GeV/c]" };
@@ -330,10 +330,10 @@ void EjCalculateAN(TString inFileName, TString outName, TString det)
 		// else
 		{
 		    asymPlot->GetPlot(j,i)->Add(bGrPhy[j+1][4 - i], Plot::Point | Plot::Erry, 0);
-		    asymPlot->GetPlot(j,i)->Add(yGrPhy[j+1][4 - i], Plot::Point | Plot::Erry, 8);
+		    //asymPlot->GetPlot(j,i)->Add(yGrPhy[j+1][4 - i], Plot::Point | Plot::Erry, 8);
 		}
 		if(i == 0 && j == 0)
-		    asymPlot->GetPlot(j,i)->AddText(2.5, -0.04, "Preliminary", 0.10);       
+		    asymPlot->GetPlot(j,i)->AddText(2.5, -0.04, "Projection", 0.10);       
 	    }
 	}
 	asymPlot->Draw();

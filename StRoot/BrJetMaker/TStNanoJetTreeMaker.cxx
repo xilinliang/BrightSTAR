@@ -246,8 +246,8 @@ Int_t TStNanoJetTreeMaker::Make()
 	mOutJet->SetX(jetX);
 	mOutJet->SetY(jetY);
 	mOutJet->SetRt(rt);
-	//mOutJet->SetUeDesity(mInVertex->jet(i)->uedensity()*mInVertex->jet(i)->area());
-	//mOutJet->SetUeMult(mInVertex->jet(i)->ueMul());
+	mOutJet->SetUedPt(mInVertex->jet(i)->ueDensity()["OffAxisConesR070"]*mInVertex->jet(i)->area());
+	//cout << "Density: "<< mInVertex->jet(i)->ueDensity()["OffAxisConesR070"] <<" Area: "<< mInVertex->jet(i)->area() <<endl;
     
 	//Add Tower info
 	for(Int_t j = 0; j < mInVertex->jet(i)->numberOfTowers(); ++j)
