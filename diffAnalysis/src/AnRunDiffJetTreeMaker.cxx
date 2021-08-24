@@ -11,6 +11,7 @@
 #include "StJetMaker/StAnaPars.h"
 #include "StRootInclude.h"
 #include "StJetMaker/StJetMaker2015.h"
+#include "StJetMaker/StEmVertexMaker.h"
 #include "BrightStInclude.h"
 #include "BrJetMaker/TStNanoDiffJetTreeMaker.h"
 #include "BrNanoDstMaker/TStRpFilterMaker.h"
@@ -28,9 +29,6 @@ void AnRunDiffJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t 
     //isMC = kTRUE;
 
     //det = "eemc"; //<------------------ Only for cron job. Should be commented in all other cases
-
-    if(gROOT->IsBatch())
-	inFile = TStScheduler::CopyInputFiles(inFile);
         
     if(!(det == "fms" || det == "eemc"))
     {
@@ -143,14 +141,15 @@ void AnRunDiffJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t 
     if(isMC)
 	fmshitMk->SetReadMuDst(1);                //for simu set to 1
     //-------------------------------------------
+    StEmVertexMaker *emVertexMkr = new StEmVertexMaker("StEmVertexMaker");
+    TString bbcSlewingData = TStar::gConfig->GetStarHome() + "/database/bbc_slewing_run15_pp200.dat"; 
+    emVertexMkr->ReadBbcSlewing(bbcSlewingData.Data()); //CKim
 
     StJetSkimEventMaker* skimEventMaker = new StJetSkimEventMaker("StJetSkimEventMaker", muDstMaker, Skimfile);
 
     StJetMaker2015* jetmaker = new StJetMaker2015("StJetMaker2015");
     jetmaker->setJetFile(Jetfile);
     jetmaker->setJetFileUe(Uefile);
-    TString bbcSlewingData = TStar::gConfig->GetStarHome() + "/database/bbc_slewing_run15_pp200.dat"; 
-    jetmaker->ReadBbcSlewing(bbcSlewingData.Data()); //CKim
 
     StAnaPars* anapars12 = new StAnaPars;
     anapars12->useTpc  = true;
@@ -197,7 +196,7 @@ void AnRunDiffJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t 
     StOffAxisConesPars *off070 = new StOffAxisConesPars(0.7);
     jetmaker->addUeBranch("OffAxisConesR070", off070);
 
-    TStNanoDiffJetTreeMaker *nanoMaker = new TStNanoDiffJetTreeMaker(jetmaker, skimEventMaker, "NanoDiffJetTreeMaker");
+    TStNanoDiffJetTreeMaker *nanoMaker = new TStNanoDiffJetTreeMaker("NanoDiffJetTreeMaker");
     nanoMaker->SetTrigIds(trigIds);
     nanoMaker->SetOutFileName((TString)"NanoDiffJetTree_" + outFile);
     nanoMaker->SetEtaMax(etaMax);
@@ -210,9 +209,6 @@ void AnRunDiffJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t 
 
     sw.Stop();
     sw.Print();
-
-    if(gROOT->IsBatch() && inFile.Contains("/tmp/"))
-	TStScheduler::DeleteTempFiles(inFile);
 
     cout << "-----------> Deleting Original jet finder files !!! <--------------------" <<endl;
     gROOT->ProcessLine(".! rm jets_*.root ueoc_*root skim_*.root");

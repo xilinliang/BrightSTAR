@@ -20,6 +20,7 @@
 #include "StJetMaker/StJetMaker2015.h"
 #include "StJetMaker/StJetSkimEventMaker.h"
 #include "StEvent/StTriggerData.h"
+#include "StEvent/StTriggerId.h"
 
 #include "TStJetEvent.h"
 #include "TStJetSkimEvent.h"
@@ -28,11 +29,12 @@
 ClassImp(TStNanoJetTreeMaker)
 
 //_____________________________________________________________________________ 
-TStNanoJetTreeMaker::TStNanoJetTreeMaker(StJetMaker2015* jetMaker,  StJetSkimEventMaker* skimMaker, const char *name):StMaker(name)
+TStNanoJetTreeMaker::TStNanoJetTreeMaker(const char *name):StMaker(name)
 {
     mOutJetEvent = new TStJetEvent();
     mOutSkimEvent = mOutJetEvent->GetEvent();
-
+    mTrigFlag = kFALSE;
+    
     mJetMaker = 0;
     mSkimEventMaker = 0;
     mInJetEvent = 0;
@@ -41,15 +43,11 @@ TStNanoJetTreeMaker::TStNanoJetTreeMaker(StJetMaker2015* jetMaker,  StJetSkimEve
     mEtaMax = 6.0;
     mEtaMin = -2.0;
     mZdist = 735.0;
-
-    mJetMaker = jetMaker;
-    mSkimEventMaker = skimMaker;
 }
 
 //_____________________________________________________________________________ 
 TStNanoJetTreeMaker::~TStNanoJetTreeMaker()
 {
-    //
     delete mOutJetEvent;
 }
 
@@ -57,7 +55,6 @@ TStNanoJetTreeMaker::~TStNanoJetTreeMaker()
 //_____________________________________________________________________________ 
 Int_t TStNanoJetTreeMaker::Init()
 {
-
     mOutFile = new TFile(mOutName, "recreate");
     mTree = new TTree("T", "EM Jet Analysis Tree");
     TStJetEvent::Class()->IgnoreTObjectStreamer();
@@ -79,20 +76,20 @@ Int_t TStNanoJetTreeMaker::Make()
     // Check if mMuDst or mEvent is valid
     if(!mMuDst)
     {
-	LOG_ERROR << "TSt<Template>Maker::Make - No MuDst found" <<endm;
+	LOG_ERROR << "TStNanoJetTreeMaker::Make - No MuDst found" <<endm;
 	return kStFatal;
     }
     mMuEvent = mMuDst->event();
     
-    //mJetMaker = (StJetMaker2015*)GetMaker("StJetMaker2015"); //This did not work --> bug fixed, try again
-    //mSkimEventMaker = (StJetSkimEventMaker*)GetMaker("StJetSkimEventMaker"); //Did not work --> bug fixed, try again
+    mJetMaker = (StJetMaker2015*)GetMaker("StJetMaker2015"); 
+    mSkimEventMaker = (StJetSkimEventMaker*)GetMaker("StJetSkimEventMaker"); 
     if(!mJetMaker || !mSkimEventMaker)
     {
 	LOG_ERROR << "TStNanoJetTreeMaker::Make - No JetMaker or SkimEventMaker found" <<endm;
 	return kStFatal;	
     }
 
-    mInJetEvent = mJetMaker->event("AntiKtR070NHits12"); //Set the branch name from a Set function
+    mInJetEvent = mJetMaker->event(mBranchName); //Set the branch name from a Set function
     mInSkimEvent = mSkimEventMaker->event();
 
     assert(mInJetEvent && mInSkimEvent);
@@ -124,28 +121,25 @@ Int_t TStNanoJetTreeMaker::Make()
     
     if(mInJetEvent->numberOfJets() == 0)
 	return kStOK;
-	
+
+    //For EM jet we have mostly have one vertex from BBC/VPD/TPC. So we do not loop over vertices
     mInVertex = mInJetEvent->vertex(); //same as mInJetEvent->vertex(0), i.e. highest ranked vertex only
     if (!mInVertex)
 	return kStOK;
     
     mOutJetEvent->Reset();
 
-    for(Int_t i = 0; i < mMaxTriggers; ++i)
-	mJetTrig[i] = mInSkimEvent->trigger(mTrigIds[i]);
-    
-    for(Int_t i = 0; i < mMaxTriggers; ++i)
+    mTrigFlag = kFALSE;
+    for(Int_t k = 0; k < mMaxTriggers; ++k)
     {
-	if(mJetTrig[i])
+	mTrigFlag = mMuEvent->triggerIdCollection().nominal().isTrigger(mTrigIds[k]);
+	if(mTrigFlag)
 	{
-	    if(mJetTrig[i]->didFire() && mJetTrig[i]->shouldFire())
-	    {
-		mOutSkimEvent->SetTrigFlag(i, 1);
-		mOutSkimEvent->SetTrigBit(i);
-	    }
+	    mOutSkimEvent->SetTrigFlag(k, 1);
+	    mOutSkimEvent->SetTrigBit(k);
 	}
-    }
-
+    }	
+    
     vtxZ = mInVertex->position().z();
 
     //tof and bbc multiplicity. Needed to minimize FMS ring of fire.
@@ -279,12 +273,9 @@ Int_t TStNanoJetTreeMaker::Make()
 	    mOutJetEvent->CopyParticle(mInParticle, mOutParticle);
 	    mOutJet->AddParticle(mOutParticle);		
 	}
-
 	//Add track info (if needed) in a similar fashion as tower and particles	    
     }
-
-    mTree->Fill();
-        
+    mTree->Fill();        
     return kStOK;
 }
 

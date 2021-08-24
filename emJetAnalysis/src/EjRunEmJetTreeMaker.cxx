@@ -5,9 +5,11 @@
 #include "StJetMaker/towers/StjTowerEnergyCutEnergy.h"
 #include "StJetMaker/StAnaPars.h"
 #include "StRootInclude.h"
+#include "StJetMaker/StEmVertexMaker.h"
 #include "StJetMaker/StJetMaker2015.h"
 #include "BrightStInclude.h"
 #include "BrJetMaker/TStNanoJetTreeMaker.h"
+#include "EjAna.h"
 
 using namespace std;
 
@@ -17,14 +19,13 @@ void EjRunEmJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t is
     sw.Start();
 
     TStar::gConfig->Print();
-    //Bool_t isMC;
-    //isMC = kFALSE;
-    //isMC = kTRUE;
-
-    //det = "eemc"; //<------------------ Only for cron job. Should be commented in all other cases
-
+    EjAna::Print();
+    
     if(gROOT->IsBatch())
+    {
 	inFile = TStScheduler::CopyInputFiles(inFile);
+	det = EjAna::kDefaultDet;
+    }
         
     if(!(det == "fms" || det == "eemc"))
     {
@@ -104,27 +105,36 @@ void EjRunEmJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t is
 
     StEEmcDbMaker* eemcDb = new StEEmcDbMaker;
     StSpinDbMaker* spinDb = new StSpinDbMaker;
-    StFmsDbMaker*  fmsDb  = new StFmsDbMaker("fmsDb"); 
-    fmsDb->SetAttr("fmsGainCorr","fmsGainCorr-BNL-C");
-    Bool_t isHotCh[4][571] = {0};
-    Int_t nHotCh = 0;
-    TStFmsHotChDB *fmsHotChDb = new TStFmsHotChDB();
-    fmsHotChDb->GetHotChList(runNumber, isHotCh);
-    cout << "The following FMS cells are masked:" <<endl;
-    for(int i = 0; i < 4; ++i)
+    StFmsDbMaker*  fmsDb  = new StFmsDbMaker("fmsDb");
+
+    if(runNumber < 18000000) //Run 15 Setup
     {
-	for(int j = 0; j < 571; ++j)
+	fmsDb->SetAttr("fmsGainCorr","fmsGainCorr-BNL-C");
+	Bool_t isHotCh[4][571] = {0};
+	Int_t nHotCh = 0;
+	TStFmsHotChDB *fmsHotChDb = new TStFmsHotChDB();
+	fmsHotChDb->GetHotChList(runNumber, isHotCh);
+	cout << "The following FMS cells are masked:" <<endl;
+	for(int i = 0; i < 4; ++i)
 	{
-	    if(isHotCh[i][j])
+	    for(int j = 0; j < 571; ++j)
 	    {
-		cout << "det "<< (i + 1)<< " ch "<< (j+1) << " hot/bad status:"<< isHotCh[i][j] <<endl;
-		++nHotCh;
+		if(isHotCh[i][j])
+		{
+		    cout << "det "<< (i + 1)<< " ch "<< (j+1) << " hot/bad status:"<< isHotCh[i][j] <<endl;
+		    ++nHotCh;
+		}
 	    }
 	}
-    }
-    cout << "Total manually masked bad / hot channels: "<< nHotCh <<endl;
+	cout << "Total manually masked bad / hot channels: "<< nHotCh <<endl;
 
-    fmsDb->maskChannels(isHotCh);
+	fmsDb->maskChannels(isHotCh);
+    }
+    else //Run 17 Setup (temporary with local gain correction file)
+    {
+	cout << "Loading local Gain Corrections for FMS ... ... " << endl;
+	fmsDb->readGainCorrFromText(true); // File should be under current directory named FmsGainCorr.txt	
+    }
     
     StEmcADCtoEMaker* adc = new StEmcADCtoEMaker;
     adc->saveAllStEvent(true);
@@ -136,15 +146,26 @@ void EjRunEmJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t is
     if(isMC)
 	fmshitMk->SetReadMuDst(1);                //for simu set to 1
     //-------------------------------------------
+    // // --> Do not use trigger simulator's result for FMS data or EM jet, no implementation for FMS trigger
+    StTriggerSimuMaker* simuTrig = new StTriggerSimuMaker;
+    simuTrig->useOnlineDB();
+    simuTrig->setMC(isMC);
 
+    //simuTrig->useBbc();
+    simuTrig->useBemc();
+    simuTrig->useEemc();
+    simuTrig->bemc->setConfig(StBemcTriggerSimu::kOnline);
+
+    StEmVertexMaker *emVertexMkr = new StEmVertexMaker("StEmVertexMaker");
+    TString bbcSlewingData = TStar::gConfig->GetStarHome() + "/database/bbc_slewing_run15_pp200.dat"; 
+    emVertexMkr->ReadBbcSlewing(bbcSlewingData.Data()); //CKim
+    
     StJetSkimEventMaker* skimEventMaker = new StJetSkimEventMaker("StJetSkimEventMaker", muDstMaker, Skimfile);
 
     StJetMaker2015* jetmaker = new StJetMaker2015("StJetMaker2015");
     jetmaker->setJetFile(Jetfile);
     jetmaker->setJetFileUe(Uefile);
-    TString bbcSlewingData = TStar::gConfig->GetStarHome() + "/database/bbc_slewing_run15_pp200.dat"; 
-    jetmaker->ReadBbcSlewing(bbcSlewingData.Data()); //CKim
-
+ 
     StAnaPars* anapars12 = new StAnaPars;
     anapars12->useTpc  = true;
     anapars12->useBemc = false;
@@ -170,40 +191,44 @@ void EjRunEmJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t is
     //EEMC cuts
     anapars12->addEemcCut(new StjTowerEnergyCutBemcStatus(1));
     anapars12->addEemcCut(new StjTowerEnergyCutAdc(4,3)); //ADC-ped>4 AND ADC-ped>3*RMS
-    anapars12->addEemcCut(new StjTowerEnergyCutEt(0.2));  //<--- Default
-    //anapars12->addEemcCut(new StjTowerEnergyCutEnergy(0.5));  // <-------- !!!!!! TESTING!!!
+    anapars12->addEemcCut(new StjTowerEnergyCutEt(EjAna::kEEmcEtMin));  
 
-    //FMS cuts, CKim
-    //anapars12->addFmsCut(new StjTowerEnergyCutFMS(0.2, 200)); //min, max //Latif: changed to 0.2, it was set to 3 by Chong
-    //anapars12->addFmsCut(new StjTowerEnergyCutFMS(0.5, 200)); //!!!!!!!!!! For Comparing With Zhanwen's Result Only !!!!!!
-    anapars12->addFmsCut(new StjTowerEnergyCutFMS(1.0, 200)); //!!!!!!!!!! Updated based on Simulation !!!!!!
-    //* 3 GeV cut was determined by RUN15 calibration condition: Zgg < 0.7 + pairE > 20 GeV
+    //FMS cuts,
+    anapars12->addFmsCut(new StjTowerEnergyCutFMS(EjAna::kFmsEngMin, EjAna::kFmsEngMax)); 
+  
 
     //Jet cuts
-    anapars12->addJetCut(new StProtoJetCutPt(0.01,200));
+    anapars12->addJetCut(new StProtoJetCutPt(0.01, EjAna::kFmsEngMax));
     anapars12->addJetCut(new StProtoJetCutEta(-1,5)); //CKim, extend to FMS acceptance
 
     //Set anti-kt R=0.7 parameters
     StFastJetPars* AntiKtR070Pars = new StFastJetPars;
+
+    StFastJetAreaPars *JetAreaPars = new StFastJetAreaPars;
+    JetAreaPars->setGhostMaxRap(5.0);	//Needed to extend to forward rapidity
+    JetAreaPars->setGhostArea(0.04);    //0.04 was set for mid-rapidity. Find an optimal value for FMS / EEMC cell size
+    
     AntiKtR070Pars->setJetAlgorithm(StFastJetPars::antikt_algorithm);
-    AntiKtR070Pars->setRparam(0.7);
+    AntiKtR070Pars->setRparam(EjAna::kRMax);
     AntiKtR070Pars->setRecombinationScheme(StFastJetPars::E_scheme);
     AntiKtR070Pars->setStrategy(StFastJetPars::Best);
-    AntiKtR070Pars->setPtMin(2);
+    AntiKtR070Pars->setPtMin(EjAna::kPtMin);
+    AntiKtR070Pars->setJetArea(JetAreaPars);
 
     jetmaker->addBranch("AntiKtR070NHits12",anapars12,AntiKtR070Pars);
-    StOffAxisConesPars *off070 = new StOffAxisConesPars(0.7);
+    StOffAxisConesPars *off070 = new StOffAxisConesPars(EjAna::kRMax);
     jetmaker->addUeBranch("OffAxisConesR070", off070);
 
-    TStNanoJetTreeMaker *nanoMaker = new TStNanoJetTreeMaker(jetmaker, skimEventMaker, "NanoJetTreeMaker");
+    TStNanoJetTreeMaker *nanoMaker = new TStNanoJetTreeMaker("NanoJetTreeMaker");
     nanoMaker->SetTrigIds(trigIds);
     nanoMaker->SetOutFileName((TString)"NanoJetTree_" + outFile);
+    nanoMaker->SetBranchName("AntiKtR070NHits12");
     nanoMaker->SetEtaMax(etaMax);
     nanoMaker->SetEtaMin(etaMin);
 
     Int_t nEvents = muDstMaker->chain()->GetEntries();
     cout << "------------> Number of entries to be processed: "<< nEvents <<endl;
-    
+
     chain->Init();
     chain->EventLoop(0, nEvents);
     chain->Finish();
@@ -215,8 +240,8 @@ void EjRunEmJetTreeMaker(TString inFile, TString outFile, TString det, Bool_t is
     if(gROOT->IsBatch() && inFile.Contains("/tmp/"))
 	TStScheduler::DeleteTempFiles(inFile);
 
-    //cout << "-----------> Deleting Original jet finder files !!! <--------------------" <<endl;
-    //gROOT->ProcessLine(".! rm jets_*.root ueoc_*root skim_*.root");
+    cout << "-----------> Deleting Original jet finder files !!! <--------------------" <<endl;
+    gROOT->ProcessLine(".! rm jets_*.root ueoc_*root skim_*.root");
     
     std::cout <<"Done!" <<endl;
     

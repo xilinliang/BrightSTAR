@@ -65,7 +65,7 @@
     //gSystem->Load("StEvent");
     gSystem->Load("StEventMaker");
     gSystem->Load("StDaqLib");
-    
+        
     //-------- EEMC Related ------------
     gSystem->Load("StEEmcDbMaker");
     gSystem->Load("StEEmcUtil");
@@ -117,7 +117,7 @@
     gSystem->Load("StUeEvent");
     gSystem->Load("StJetMaker");
     gSystem->Load("StTriggerFilterMaker");
-
+    
     //------------- RP ------------------
     gSystem->Load("StMuRpsUtil.so"); //RP Afterburner
 
@@ -164,7 +164,7 @@
     gSystem->Load("libUcrAnalysis.so");
     
     cout << "attempt completed !!\n\n";
-               
+                  
     //gInterpreter->AddIncludePath("src/");       
     //gStyle->SetMarkerStyle(7);    // Filled square
     gStyle->SetMarkerStyle(4);      // Circle
@@ -216,7 +216,7 @@
 
     //Default Graph Style Settings
     dStyle->SetMarkerColor(kBlack);
-    dStyle->SetMarkerSize(1); //see http://root.cern.ch/root/html/TAttMarker.html
+    dStyle->SetMarkerSize(1.3); //see http://root.cern.ch/root/html/TAttMarker.html
     dStyle->SetMarkerStyle(22); //see http://root.cern.ch/root/html/TAttMarker.html
 
     //Grid
@@ -227,9 +227,10 @@
     //dStyle->SetTitleSize(0.08, "xyz"); 
     dStyle->SetTitleSize(0.075, "t"); //"t": could be anything that is not "x" "y" or "z"
     dStyle->cd();
-    
+            
     // gStyle->SetPadGridX(kFALSE);
     // gStyle->SetPadGridY(kFALSE);
+    // gStyle->SetOptStat(0);
     
     //-----------------------------------
     const Int_t NRGBs = 5;
@@ -241,12 +242,7 @@
     Double_t blue[NRGBs]  = { 0.51, 1.00, 0.12, 0.00, 0.00 };
     TColor::CreateGradientColorTable(NRGBs, stops, red, green, blue, NCont);
     gStyle->SetNumberContours(NCont);
-    
-
-    // gStyle->SetPadGridX(kFALSE);
-    // gStyle->SetPadGridY(kFALSE);
-    // gStyle->SetOptStat(0);
-    
+        
     using namespace TStar;
     
 }

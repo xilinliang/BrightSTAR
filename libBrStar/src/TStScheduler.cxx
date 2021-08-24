@@ -44,7 +44,7 @@ Int_t TStScheduler::mJobThreshold = 100;
 Int_t TStScheduler::mSleepTime = 30; //In minutes
 Int_t TStScheduler::mRunIncrement = 20;
 Int_t TStScheduler::mMaxFilesPerJob = 5;
-Int_t TStScheduler::mCopyToExeHost = 1;
+Int_t TStScheduler::mCopyToExeHost = 0;
 Int_t TStScheduler::mJobCounter = 0;
 Int_t TStScheduler::mInitCounter = 0;
 
@@ -98,8 +98,8 @@ void TStScheduler::SubmitJob(vector <string> jobList, TString jobName)
     {
 	condorConfig_out << str <<endl;
     }
-  
-    condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database" << endl;
+    if(mCopyToExeHost)
+	condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database" << endl;
     condorConfig_in.close();
 
     //======================= Get File Path and wtite to condor file descriptor ===================================
@@ -117,7 +117,10 @@ void TStScheduler::SubmitJob(vector <string> jobList, TString jobName)
     {
 	rootCommand = jobList[job];
 	rootCommand.ReplaceAll("\"", "\\\"\"");
-	condorConfig_out << "Arguments   =  \"-c '" << "echo \"\""<< rootCommand << "\"\" | root4star -l -b'\"" <<endl;
+	if(mCopyToExeHost)
+	    condorConfig_out << "Arguments   =  \"-c '" << "source setup.sh && echo \"\""<< rootCommand << "\"\" | root4star -l -b'\"" <<endl;
+	else
+	    condorConfig_out << "Arguments   =  \"-c '" << "source "<< starHome <<"/setup.sh && echo \"\""<< rootCommand << "\"\" | root4star -l -b "<< starHome<<"/rootlogon.C"<<" '\"" <<endl;
 	condorConfig_out << "Queue\n" << endl;
     }	    
     condorConfig_out.close();
@@ -175,7 +178,6 @@ void TStScheduler::SubmitJob(TString functionName, Int_t firstRun,  Int_t lastRu
 	return;
     }
     shell_out<<"#!/bin/bash"<<endl;
-    //shell_out<<"stardev"<<endl;
     if(mCopyToExeHost)
 	shell_out<<"source setup.sh"<<endl;
     else
@@ -204,7 +206,7 @@ void TStScheduler::SubmitJob(TString functionName, Int_t firstRun,  Int_t lastRu
 	condorConfig_out << str <<endl;
     }
     if(mCopyToExeHost)
-	condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database" << endl;
+	condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database, "<< starHome << "/FmsGainCorr.txt" << endl;
     condorConfig_out << "Executable      = " << jobDir << "/condor.sh" <<endl;
     condorConfig_in.close();
 
@@ -348,7 +350,6 @@ void TStScheduler::SubmitJob(Int_t maxFilesPerJob, TString functionName, Int_t f
 	return;
     }
     shell_out<<"#!/bin/bash"<<endl;
-    //shell_out<<"stardev"<<endl;
     if(mCopyToExeHost)
 	shell_out<<"source setup.sh"<<endl;
     else
@@ -378,7 +379,7 @@ void TStScheduler::SubmitJob(Int_t maxFilesPerJob, TString functionName, Int_t f
 	condorConfig_out << str <<endl;
     }
     if(mCopyToExeHost)
-	condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database" << endl;
+	condorConfig_out << "transfer_input_files =   " << starHome << "/.sl73_gcc485, " << starHome << "/lib, "<< starHome << "/rootlogon.C, "<< starHome << "/setup.sh, "<< starHome << "/setup.csh, "<< starHome << "/config, " << starHome << "/database" << "/FmsGainCorr.txt" << endl;
     condorConfig_out << "Executable      = " << jobDir << "/condor.sh" <<endl;
     condorConfig_in.close();
 
@@ -588,7 +589,6 @@ void TStScheduler::SubmitJob(TString functionName, TString inFileName, TString o
 	return;
     }
     shell_out<<"#!/bin/bash"<<endl;
-    //shell_out<<"stardev"<<endl;
     if(mCopyToExeHost)
 	shell_out<<"source setup.sh"<<endl;
     else
@@ -684,7 +684,6 @@ void TStScheduler::SubmitGenericJob(TString functionWithArg, TString jobName)
 	return;
     }
     shell_out<<"#!/bin/bash"<<endl;
-    //shell_out<<"stardev"<<endl;
     if(mCopyToExeHost)
 	shell_out<<"source setup.sh"<<endl;
     else
@@ -765,7 +764,7 @@ void TStScheduler::SubmitSumsJob(TString function, TString runList, TString outN
 }
 
 
-void TStScheduler::CronJob(TString functionName,  Int_t first_run, Int_t last_run)
+void TStScheduler::CronJob(TString functionName,  Int_t first_run, Int_t last_run, TString passName)
 {
     string response;
     TStar::gConfig->Print();
@@ -832,7 +831,7 @@ void TStScheduler::CronJob(TString functionName,  Int_t first_run, Int_t last_ru
 	    if(startRun == -1)
 		break;
 	    iteration = (index_e / runIncrement) + mInitCounter;
-	    TString jobName = functionName + to_string(iteration);
+	    TString jobName = functionName + passName + to_string(iteration);
 	    cout << "Submitting jobs for run range: "<< startRun << " to "<< endRun <<endl;
 	    TString emailMessage = (TString)"Submitted jobs:: functionName: " + functionName + (TString)" Start Rrun: " + to_string(startRun) + (TString)" End Run: " + to_string(endRun) + (TString)" Iteration: " + to_string(index_e / runIncrement) + (TString)" Active jobs: " + to_string(activeJobs);
 	    TString emailCommand = (TString)".! echo \"" + emailMessage + (TString)"\" |  mail -s \"New Job Submission\" " + (TString)TStar::gConfig->GetUserEmail();
@@ -1008,6 +1007,10 @@ void TStScheduler::DeleteTempFiles(TString inFileName)
 	cout << "Deleting input files from tmp ..." <<endl;
 	gROOT->ProcessLine(".! rm " + inFileName);
     }
+
+    if(gROOT->IsBatch())
+	gROOT->ProcessLine(".! rm -r  .sl73_gcc485 lib rootlogon.C setup.sh setup.csh config database FmsGainCorr.txt");
+    
 }
 
 //_______________________________________________________________________
@@ -1030,5 +1033,9 @@ void TStScheduler::DeleteTempFilesFromList(TString in_file_list)
     inFileList.close();
     if(in_file_list.Contains("/tmp/"))
 	gROOT->ProcessLine(".! rm " + in_file_list);
+
+    if(gROOT->IsBatch())
+	gROOT->ProcessLine(".! rm -r  .sl73_gcc485 lib rootlogon.C setup.sh setup.csh config database FmsGainCorr.txt");
+    
     cout << "Done deleting all temporary files copied" <<endl;    
 }

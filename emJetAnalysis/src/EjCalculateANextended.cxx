@@ -81,7 +81,7 @@ void EjCalculateANextended(TString inFileName, TString outName, TString det)
     Double_t bNd_l;
     Double_t bNd_r;
 
-    Double_t yNu_l;  //y prefix forat least N photons case here
+    Double_t yNu_l;  //y prefix for at least N photons case here
     Double_t yNu_r;
     Double_t yNd_l;
     Double_t yNd_r;
@@ -312,8 +312,11 @@ void EjCalculateANextended(TString inFileName, TString outName, TString det)
     TGraphErrors *znGr = new TGraphErrors(9, x_z, y_z, 0, y_zerr);
     znGr->SetName("znGrAll");
     
-
     znGr2->Write();
     znGr3->Write();
     znGr->Write();
+
+    //Run 11 Mriganka's Result
+    Double_t x_mm[] = {41.18, 45.96, 50.87, 55.78, 61.48, 69.17, 81.64};
+    Double_t y_mm[] = {0.0132, 0.0080, 0.0135, 0.0170, 0.0224, 0.0250, 0.0313};    
 }

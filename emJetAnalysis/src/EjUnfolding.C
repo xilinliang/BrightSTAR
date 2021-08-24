@@ -21,7 +21,8 @@
  
 #include "TSVDUnfold.h"
  
-  
+//The TSVDUnfold documentation states that the response matrix should not be probabilities. So while in our case it's probability, we cannot normalize it to 1. The procedure will blow-up in that case.
+
 void EjUnfolding(TString respMatFile, TString  foldedResultFile)
 {
    gROOT->SetStyle("Plain");
@@ -41,26 +42,45 @@ void EjUnfolding(TString respMatFile, TString  foldedResultFile)
    TH1D *h1nPhDet = (TH1D*)fRespMat->Get("h1nPhotonsDet");   //Detector level jet photon multiplicity
    TH2D *h2RespMat = (TH2D*)fRespMat->Get("h2nPhResMat"); // <------ Should be det along x and part along y
    // ---> should be normalized to 1 for all 
-   
+   /*   
+   //Normalize all rows of the response matrix
+   Double_t sumBinCont = 0;
+   for(Int_t j = 1; j <= h2RespMat->GetNbinsY(); ++j) //along y-axis
+   {
+       sumBinCont = 0;
+       for(Int_t i = 1; i <= h2RespMat->GetNbinsX(); ++i) // along x-axis
+       {
+	   sumBinCont += h2RespMat->GetBinContent(i, j);	  
+       }
+       for(Int_t i = 1; i <= h2RespMat->GetNbinsX(); ++i) // along x-axis
+       {
+	   h2RespMat->SetBinContent(i, j, h2RespMat->GetBinContent(i, j) / sumBinCont);	  
+       }
+   }
+   h1nPhPart->Scale(1.0 / h1nPhPart->Integral());
+   h1nPhDet->Scale(1.0 / h1nPhDet->Integral());
+   */
    TH1D *h1FoldedRes[3][9]; // max three energy bins and 9 pt bins   
    TH1D *h1UnfoldedRes[3][9]; // max three energy bins and 9 pt bins   
    for(Int_t i = 0; i < 9; ++i)
    {
-       TString hName1 = Form("emJetPtBin1-%i", i);
-       TString hName2 = Form("emJetPtBin2-%i", i);
-       TString hName3 = Form("emJetPtBin3-%i", i);
+       TString hName1 = Form("emJetPtBin1_%i", i);
+       TString hName2 = Form("emJetPtBin2_%i", i);
+       TString hName3 = Form("emJetPtBin3_%i", i);
        h1FoldedRes[0][i] = (TH1D*) fFoldedRes->Get(hName1);
-       h1UnfoldedRes[0][i] = new TH1D(hName1, hName1, h1FoldedRes[0][i]->GetGetNbinsX(), 0,  h1FoldedRes[0][i]->GetGetNbinsX());
+       h1UnfoldedRes[0][i] = new TH1D("Unf" + hName1, hName1, h1FoldedRes[0][i]->GetNbinsX(), 0,  h1FoldedRes[0][i]->GetNbinsX());
        
        h1FoldedRes[1][i] = (TH1D*) fFoldedRes->Get(hName2);
-       h1UnfoldedRes[1][i] = new TH1D(hName2, hName2, h1FoldedRes[1][i]->GetGetNbinsX(), 0,  h1FoldedRes[1][i]->GetGetNbinsX());
+       h1UnfoldedRes[1][i] = new TH1D("Unf" + hName2, hName2, h1FoldedRes[1][i]->GetNbinsX(), 0,  h1FoldedRes[1][i]->GetNbinsX());
        
        h1FoldedRes[2][i] = (TH1D*) fFoldedRes->Get(hName3);
-       h1UnfoldedRes[2][i] = new TH1D(hName3, hName3, h1FoldedRes[2][i]->GetGetNbinsX(), 0,  h1FoldedRes[2][i]->GetGetNbinsX());
+       h1UnfoldedRes[2][i] = new TH1D("Unf" + hName3, hName3, h1FoldedRes[2][i]->GetNbinsX(), 0,  h1FoldedRes[2][i]->GetNbinsX());
    }
    
 
-   TH1D* foldedres = h1FoldedRes[0][0];
+   //<-------- Lets consider one particular energy and pt bin for now ---------------->
+   
+   TH1D* foldedres = h1FoldedRes[1][2];
    Int_t nbins = foldedres->GetNbinsX();
    // Statistical covariance matrix
    TH2D *statcov = new TH2D("statcov", "covariance matrix", nbins, 0, nbins, nbins, 0, nbins);
@@ -76,15 +96,17 @@ void EjUnfolding(TString respMatFile, TString  foldedResultFile)
    // Here starts the actual unfolding
    //
    // Create TSVDUnfold object and initialise
-   TSVDUnfold *tsvdunf = new TSVDUnfold(foldedres, statcov, h1nPhDet, h1nPhPart, h2RespMat );
+   TSVDUnfold *tsvdunf = new TSVDUnfold(foldedres, statcov, h1nPhDet, h1nPhPart, h2RespMat ); //All histograms must have same dimension
  
    // It is possible to normalise unfolded spectrum to unit area
-   tsvdunf->SetNormalize( kFALSE ); // no normalisation here
+   //tsvdunf->SetNormalize( kFALSE ); // no normalisation here
+   //tsvdunf->SetNormalize( kTRUE );  //  normalisation here <------- TEST
  
    // Perform the unfolding with regularisation parameter kreg = 13
    // - the larger kreg, the finer grained the unfolding, but the more fluctuations occur
    // - the smaller kreg, the stronger is the regularisation and the bias
-   TH1D* unfres = tsvdunf->Unfold( 13 );
+   //TH1D* unfres = tsvdunf->Unfold( 13 ); 
+   TH1D* unfres = tsvdunf->Unfold( 5 );  // Set to number of parameters in the linear equation
  
    // Get the distribution of the d to cross check the regularization
    // - choose kreg to be the point where |d_i| stop being statistically significantly >>1
@@ -93,7 +115,7 @@ void EjUnfolding(TString respMatFile, TString  foldedResultFile)
    // Get the distribution of the singular values
    TH1D* svdist = tsvdunf->GetSV();
  
-   // Compute the error matrix for the unfolded spectrum using toy MC
+   // Compute the error matrix for the unfolded spectrum using toy MC (data)
    // using the measured covariance matrix as input to generate the toys
    // 100 toys should usually be enough
    // The same method can be used for different covariance matrices separately.
@@ -126,16 +148,16 @@ void EjUnfolding(TString respMatFile, TString  foldedResultFile)
    leg->SetBorderSize(0);
    leg->SetFillColor(0);
    leg->SetFillStyle(0);
-   leg->AddEntry(unfres,"Unfolded Data","p");
-   leg->AddEntry(foldedres,"Folded Data","l");
+   leg->AddEntry(unfres,"After Unfolding","p");
+   leg->AddEntry(foldedres,"Before Unfolding","l");
  
-   TCanvas *c1 = new TCanvas( "c1", "Unfolding toy example with TSVDUnfold", 1000, 900 );
+   TCanvas *c1 = new TCanvas( "c1", "Unfolding example with TSVDUnfold", 1000, 900 );
  
    c1->Divide(1,2);
    TVirtualPad * c11 = c1->cd(1);
  
    TH1D* frame = new TH1D( *unfres );
-   frame->SetTitle( "Unfolding toy example with TSVDUnfold" );
+   frame->SetTitle( "Unfolding example with TSVDUnfold" );
    frame->GetXaxis()->SetTitle( "x variable" );
    frame->GetYaxis()->SetTitle( "Events" );
    frame->GetXaxis()->SetTitleOffset( 1.25 );
@@ -191,4 +213,13 @@ void EjUnfolding(TString respMatFile, TString  foldedResultFile)
    ddist->SetLineWidth( 2 );
    ddist->Draw( "same" );
    line->Draw();
+
+   cout << "------------------------------------------------------------------------------------" <<endl;
+   for(Int_t i = 1; i <= 5; ++i)
+   {
+       cout << foldedres->GetBinContent(i) << "\t" << unfres->GetBinContent(i) <<endl;       
+   }
+
+   TCanvas *can3 = new TCanvas();
+   h2RespMat->Draw("colz");   
 }

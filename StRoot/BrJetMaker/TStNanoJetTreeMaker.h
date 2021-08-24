@@ -48,6 +48,7 @@ private:
     TFile *mOutFile;
     TTree *mTree;
     TString mOutName = "NanoJetTree.root";
+    TString mBranchName = "AntiKtR070NHits12";
     TStJetEvent *mOutJetEvent;    
     TStJetSkimEvent *mOutSkimEvent;    
     TStJetCandidate *mOutJet;
@@ -57,13 +58,14 @@ private:
     static const Int_t mMaxTriggers = 9;
     StJetSkimTrig* mJetTrig[mMaxTriggers];
     Int_t mTrigIds[mMaxTriggers];
+    Bool_t mTrigFlag;
     Double_t mEtaMax;
     Double_t mEtaMin;
     Double_t mZdist;
     Double_t mR = 0.7;
         
 public: 
-    TStNanoJetTreeMaker(StJetMaker2015* jetMaker, StJetSkimEventMaker* skimMaker, const char *name  = "NanoJetTreeMaker");
+    TStNanoJetTreeMaker(const char *name  = "NanoJetTreeMaker");
     virtual ~TStNanoJetTreeMaker();
     virtual Int_t Init();
     virtual Int_t Make();
@@ -75,8 +77,9 @@ public:
     void SetEtaMin(Double_t etaMin){mEtaMin = etaMin;}
     void SetDetZdist(Double_t z){mZdist = z;}
     void SetTrigIds(Int_t *trigIds);
-    void SetR(Double_t R){mR = R;};
-
+    void SetR(Double_t R){mR = R;}
+    void SetBranchName(TString branchName){mBranchName = branchName;} //Branch name in main jet tree (to be copied)
+    
     ClassDef(TStNanoJetTreeMaker,1) 
 };
 

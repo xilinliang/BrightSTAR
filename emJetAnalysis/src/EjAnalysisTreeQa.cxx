@@ -41,10 +41,12 @@ void EjAnalysisTreeQa(TString inFileName, TString outName, TString det)
 
     TH1D *h1Eta = new TH1D ("h1Eta", "EM Jet Eta; Jet #eta", 200, 1.0, 5.0);
     TH1D *h1Phi = new TH1D ("h1Phi", "EM Jet Phi; Jet #phi [rad]", 200, -3.3, 3.3);
-    TH1D *h1E = new TH1D ("h1E", "EM Jet E; Jet E [GeV]", 200, 0.0, 70.0);
-    TH1D *h1JetE_s = new TH1D ("h1JetE_s", "EM Jet E [small cells]; Jet E [GeV]", 200, 0.0, 85.0);
-    TH1D *h1JetE_l = new TH1D ("h1JetE_l", "EM Jet E [large cells]; Jet E [GeV]", 200, 0.0, 70.0);    
-    TH1D *h1Pt = new TH1D ("h1Pt", "Jet Pt; Jet Pt [GeV/c]", 500, 0.0, 50.0);
+    TH1D *h1E = new TH1D ("h1E", "EM Jet E; Jet E [GeV]", 200, 0.0, 200.0);
+    TH1D *h1JetE_s = new TH1D ("h1JetE_s", "EM Jet E [small cells]; Jet E [GeV]", 200, 0.0, 200.0);
+    TH1D *h1JetE_l = new TH1D ("h1JetE_l", "EM Jet E [large cells]; Jet E [GeV]", 200, 0.0, 200.0);    
+    TH1D *h1Pt = new TH1D ("h1Pt", "Jet Pt; Jet Pt [GeV/c]", 200, 0.0, 20.0);
+    TH1D *h1PtUE = new TH1D ("h1PtUE", "UE corrected Jet Pt; UE corrected Jet Pt [GeV/c]", 200, 0.0, 20.0);
+    TH1D *h1dPt = new TH1D ("h1dPt", "UE dPt; UE dPt [GeV/c]", 100, 0.0, 2.0);
     TH1D *h1nPhotonsTow = new TH1D("h1nPhotonsTow", "number of photons in EM jets from tower counts; Number of Photons", 20, 0, 20);
     TH1D *h1nPhotons = new TH1D("h1nPhotons", "number of photons in EM jets from mJets.mNphotons; Number of Photons", 20, 0, 20);
     TH1D *h1vtxZ = new TH1D("h1vtxZ", "Jet vetrex z; Jet vertex z [cm]", 200, -200, 200);
@@ -120,18 +122,12 @@ void EjAnalysisTreeQa(TString inFileName, TString outName, TString det)
 	h1nJets_all->Fill(jetEvent->GetNumberOfJets());
 	vtxZ = skimEvent->GetVertexZ();
 	
-	// for(Int_t t = 0; t < 9; ++t) //Moved to the end of event loop
-	// {
-	//     if(skimEvent->GetTrigFlag(t))
-	// 	h1TrigType->Fill(t);
-	// }
-
 	//Exclude FMS small-bs3 trigger that gives ring of fire issue. But this removes most of high energetic jets.
-	if(det == "fms")
-	{
-	    if(skimEvent->GetTrigFlag(5))
-		continue;
-	}
+	// if(det == "fms")
+	// {
+	//     if(skimEvent->GetTrigFlag(5))
+	// 	continue;
+	// }
 	//Alternative way to reduce ring of fire, require: BBCMult > 2 and TofMult > 2
 	
 	nJets = 0;	
@@ -149,15 +145,14 @@ void EjAnalysisTreeQa(TString inFileName, TString outName, TString det)
 	    ++nJets;
 	    eng = jet->GetE();
 	    pt = jet->GetPt();
-
-	    if(j == 0)
-		h1vtxZ->Fill(vtxZ);
 	    
 	    h1nPhotonsTow->Fill(jet->GetNumberOfTowers());
 	    h1nPhotons->Fill(jet->GetNphotons());
 	    h1Eta->Fill(eta);
 	    h1Phi->Fill(phi);
 	    h1Pt->Fill(pt);
+	    h1dPt->Fill(jet->GetUedPt());
+	    h1PtUE->Fill(pt - jet->GetUedPt());
 	    h1E->Fill(eng);
 	    
 	    h2EvsPt->Fill(pt, eng);
@@ -210,7 +205,8 @@ void EjAnalysisTreeQa(TString inFileName, TString outName, TString det)
 	    {
 		if(skimEvent->GetTrigFlag(t))
 		    h1TrigType->Fill(t);
-	    }
+	    }	    
+	    h1vtxZ->Fill(vtxZ);
 	}
     }
 
