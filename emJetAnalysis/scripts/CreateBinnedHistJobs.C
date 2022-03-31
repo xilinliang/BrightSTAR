@@ -10,10 +10,10 @@ void CreateBinnedHistJobs(Int_t firstRun = -1, Int_t lastRun = -1)
 {
     vector <string> jobList;
     //------- 1.Change Here Function Name ------------
-    //TString funcName = "EjCreateBinnedHist";
+    //TString funcName = "EjCreateBinnedHistMerged";
     TString funcName = "EjCreateBinnedHistExtended";
-    //TString jobName = "EjCreateBinnedHisR17G1_3Pass0";
-    TString jobName = "R15EEmcEjCreateBinnedHistExtPass4_AllPh";
+    //TString jobName = "EjCreateBinnedHisR17G11_17Pass0";
+    TString jobName = "R15FmsEjCreateBinnedHistExtended";
     //--------------------------------------
     
     TStRunList *list = new TStRunList();
@@ -26,12 +26,13 @@ void CreateBinnedHistJobs(Int_t firstRun = -1, Int_t lastRun = -1)
     //------- 2.Change Here the path and file prefix ---------------
     //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/EmJetWOmasking_znFms/NanoJetTree_EjRunEmJetTreeMaker_";
     //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/pass2/eemc/NanoJetTree_EjRunEmJetTreeMakerEEmcSmd_";
-    TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run15/pass4/eemcTow/NanoJetTree_EjRunEmJetTreeMaker_";
-    //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run15/pass5/fms/nanoDst/NanoJetTree_EjRunEmJetTreeMaker_";
+
+    //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run15/pass4/eemcTow/NanoJetTree_EjRunEmJetTreeMaker_";
+    TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run15/pass5/fms/nanoDst/NanoJetTree_EjRunEmJetTreeMaker_";
 
     //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/scratch/EmJetEEmcTowPass4Merged/NanoJetTree_EjRunEmJetTreeMaker_";
     //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/EmJetWOmaskingUe_znFms/NanoJetTree_EjRunEmJetTreeMaker_";
-    //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run17/pass0/Run17FmsEmJetGr1_3/NanoJetTree_EjRunEmJetTreeMaker_";
+    //TString filePrefix = "/star/u/kabir/GIT/BrightSTAR/dst/emJet/run17/pass0/Run17FmsEmJetTree/NanoJetTree_EjRunEmJetTreeMaker_";
     //----------
     
     cout << "Total number of files to be processed: "<< maxRuns <<endl;
@@ -56,13 +57,13 @@ void CreateBinnedHistJobs(Int_t firstRun = -1, Int_t lastRun = -1)
 	argList += run;
 	argList += ",\"";
 	argList += filePrefix;
-	//argList += "\",\"fms\","; //<------ Change detector
-	argList += "\",\"eemc\","; //<------ Change detector
+	argList += "\",\"fms\","; //<------ Change detector
+	//argList += "\",\"eemc\","; //<------ Change detector
 	argList += run;
 	argList += ",";
 	argList += run;
-	argList += ")"; //<--------------- Update Here, min number of photon 
-	//argList += ", 3)"; //<--------------- Update Here, min number of photon 
+	//argList += ")"; //<--------------- Update Here, min number of photon 
+	argList += ", 4)"; //<--------------- Update Here, min number of photon 
 	
 	//---------------------------------------------------------------------
 	

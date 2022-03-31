@@ -13,7 +13,7 @@
 #include "BrJetMaker/TStJetSkimEvent.h"
 using namespace std;
 
-void EjCreateBinnedHist(Int_t fillNo, TString fileNamePrefix, TString det, Int_t firstRun, Int_t lastRun)
+void EjCreateBinnedHistMerged(Int_t fillNo, TString fileNamePrefix, TString det, Int_t firstRun, Int_t lastRun)
 {
     /*
       We need to bin in: energy (5), number of photons (6), phi (16), spin (2), pt(6).
@@ -347,10 +347,12 @@ void EjCreateBinnedHist(Int_t fillNo, TString fileNamePrefix, TString det, Int_t
 			continue;
 		}
 		
-		if(nPhotons > 0 && nPhotons < kPhotonBins)
-		    nPhotons_i = nPhotons - 1;
-		else if(nPhotons >= kPhotonBins)
-		    nPhotons_i = kPhotonBins - 1;
+		if(nPhotons == 1 || nPhotons == 2)
+		    nPhotons_i = 0;
+		else if(nPhotons == 3)
+		    nPhotons_i = 1;
+		else if(nPhotons == 4 || nPhotons == 5)
+		    nPhotons_i = 2;
 		else
 		    continue;
 

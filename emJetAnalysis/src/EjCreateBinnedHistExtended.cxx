@@ -16,8 +16,7 @@ using namespace std;
 
 
 void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString det, Int_t firstRun, Int_t lastRun, Int_t minNphotons)
-{
-   
+{   
     // We need to bin in: energy (5), number of photons (6), phi (16), spin (2), pt(6).
     
     TString outName = (TString)"BinnedHist_ext_" + to_string(fillNo) + (TString)".root";
@@ -58,7 +57,7 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
     TH2D *h2nPhotonsVsPt = new TH2D("h2nPhotonsVsPt", "Number of photons vs Pt", 10, 2, 7, 11, -1, 10);    
     TH2D *h2nPhotonsVsXf = new TH2D("h2nPhotonsVsXf", "Number of photons vs Xf", 10, 0, 1.0, 11, -1, 10);    
     TH1D *h1Eng = new TH1D("h1Eng", "Jet Energy", 100, 0, 200);
-    TH1D *h1Xf = new TH1D("h1Xf", "X_{F}", 50, 0, 2.0);
+    TH1D *h1Xf = new TH1D("h1Xf", "X_{F}", 40, -1.0, 1.0);
     TH1D *h1PhiB = new TH1D("h1PhiB", "Phi [Blue beam]", kPhiBins, -1.0*TMath::Pi(), TMath::Pi());
     TH1D *h1PhiY = new TH1D("h1PhiY", "Phi [Yellow beam]", kPhiBins, -1.0*TMath::Pi(), TMath::Pi());
 
@@ -80,16 +79,16 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 	etaMin = 2.8;  //2.4;
 	etaMax = 3.8;  //4.5;
 
-	engMin = 20;
-	engMax = 100;
+	engMin = 20;  //Overwritten later
+	engMax = 100; //Overwritten later
     }
     else if(det == "eemc")
     {
 	etaMin = 1.0; //0.8;
 	etaMax = 2.0; //2.5;
 
-	engMin = 0;
-	engMax = 20;	
+	engMin = 0;   //Overwritten later
+	engMax = 20;  //Overwritten later	
     }
     else
     {
@@ -206,9 +205,17 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 	
 	nPoints = 0;
 	if(runNumber < 18000000)
+	{
 	    sqrt_s = 200;        //Run 15
+	    engMin = 20;
+	    engMax = 100;
+	}
 	else
+	{
 	    sqrt_s = 510;        //Run 17
+	    engMin = 20;
+	    engMax = 255;
+	}
 	    		
 	Int_t nEntries = tree->GetEntries();
 	cout << "Processing run number: "<< runNumber <<endl;
@@ -268,8 +275,10 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 		theta =  2 * atan( exp(-eta) );
 		eng = jet->GetE();
 		ptRaw = jet->GetPt();
-		pt = jet->GetPt();            // !!!!!!!!!!! Disabled UE correction for EEMC
-		//pt = jet->GetPt() - jet->GetUedPt();
+		if(det == "eemc")
+		    pt = jet->GetPt();            // !!!!!!!!!!! Currently no UE correction for EEMC
+		else
+		    pt = jet->GetPt() - jet->GetUedPt();
 		nPhotons = jet->GetNumberOfTowers();
 
 		if(eta < etaMin || eta > etaMax) //Conside only EEMC and FMS coverage
@@ -279,7 +288,7 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 		h1E->Fill(eng);
 		h1Pt->Fill(pt);
 
-		//!!!!!!! WARNING: DO NOT USE FOR YOUR RESULT NOW!!!! 
+		//!!!!!!! DO NOT USE FOR YOUR RESULT NOW!!!! 
 		// pt = EjJetPtCorr(pt, eng);
 		// eng = EjJetEngCorr(eng); 
 
@@ -344,7 +353,8 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 		    bHistPtVsXfNp->Fill(xf, pt);
 		}
 		
-		if(nPhotons == 2) 
+		if(nPhotons == 3)  
+		// if(nPhotons == 2 || nPhotons == 1)  
 		{
 		    bHist2p[bSpin_i]->Fill(phi_b, xf);
 		    bHistPtVsXf2p->Fill(xf, pt);
@@ -359,7 +369,7 @@ void EjCreateBinnedHistExtended(Int_t fillNo, TString fileNamePrefix, TString de
 		h2nPhotonsVsXf->Fill(xf, nPhotons);
 
 		h1Xf->Fill(xf); //Moved here to calculate average Xf for EEMC plots for pwg group
-		
+		//if(xf < 0.2) cout <<xf<<"\t"<<eng<<"\t"<<eta<<"\t"<<pt<<"\t"<<phi<<"\t"<<LV.Pz() <<"\t"<< jet->GetUedPt() <<endl;		
 		eventAccepted = kTRUE;
 	    }
 	    //------------ Calculate Average Polarization -----------------------------------
